@@ -10,3 +10,7 @@ readme = "README.md"
 repository = "https://github.com/0xhappyboy/f_ppt"
 
 [dependencies]
+zip = "9.8.1"
+
+[dev-dependencies]
+ureq = "3.5.2"
