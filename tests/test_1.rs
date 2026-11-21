@@ -13,7 +13,7 @@ mod tests {
     const TEST_IMAGE_URL_2: &str = "https://picsum.photos/id/238/300/200";
     const TEST_IMAGE_URL_3: &str = "https://picsum.photos/id/239/400/300";
     const TEST_IMAGE_URL_4: &str = "https://picsum.photos/id/240/250/250";
-    const windows_output_url: &str = "/Users/max/Downloads/tests";
+    const windows_output_url: &str = "C:\\Users\\admin\\Downloads\\";
     const macos_output_url: &str = "/Users/max/Downloads/tests";
     /// Output path for demo PPTX file.
     fn demo_path() -> std::path::PathBuf {
