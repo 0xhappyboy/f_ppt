@@ -1,0 +1,12 @@
+[package]
+name = "f_ppt"
+version = "0.1.0"
+edition = "2024"
+authors = ["happyboy <superhappyboy1995@gmail.com>"]
+description = "A Rust PPT document parsing engine, with f_ppt at its core, providing complete document structure decomposition and read/write capabilities."
+keywords = ["ppt", "document"]
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/0xhappyboy/f_ppt"
+
+[dependencies]
