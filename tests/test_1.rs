@@ -13,13 +13,19 @@ mod tests {
     const TEST_IMAGE_URL_2: &str = "https://picsum.photos/id/238/300/200";
     const TEST_IMAGE_URL_3: &str = "https://picsum.photos/id/239/400/300";
     const TEST_IMAGE_URL_4: &str = "https://picsum.photos/id/240/250/250";
+    const windows_output_url: &str = "/Users/max/Downloads/tests";
+    const macos_output_url: &str = "/Users/max/Downloads/tests";
     /// Output path for demo PPTX file.
     fn demo_path() -> std::path::PathBuf {
         #[cfg(target_os = "windows")]
         {
-            std::path::PathBuf::from(r"C:\Users\admin\Downloads\demo.pptx")
+            std::path::PathBuf::from(windows_output_url).join("demo.pptx")
         }
-        #[cfg(not(target_os = "windows"))]
+        #[cfg(target_os = "macos")]
+        {
+            std::path::PathBuf::from(macos_output_url).join("demo.pptx")
+        }
+        #[cfg(all(not(target_os = "windows"), not(target_os = "macos")))]
         {
             std::env::temp_dir().join("demo.pptx")
         }
