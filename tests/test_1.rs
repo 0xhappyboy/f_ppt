@@ -9,12 +9,10 @@ mod tests {
         FTextParagraph, FTheme,
     };
     use std::io::Read;
-
     const TEST_IMAGE_URL_1: &str = "https://picsum.photos/id/237/200/200";
     const TEST_IMAGE_URL_2: &str = "https://picsum.photos/id/238/300/200";
     const TEST_IMAGE_URL_3: &str = "https://picsum.photos/id/239/400/300";
     const TEST_IMAGE_URL_4: &str = "https://picsum.photos/id/240/250/250";
-
     /// Output path for demo PPTX file.
     fn demo_path() -> std::path::PathBuf {
         #[cfg(target_os = "windows")]
@@ -26,7 +24,6 @@ mod tests {
             std::env::temp_dir().join("demo.pptx")
         }
     }
-
     /// Downloads an image from URL and returns raw bytes.
     fn download_image(url: &str) -> Vec<u8> {
         ureq::get(url)
@@ -38,7 +35,6 @@ mod tests {
             .collect::<Result<Vec<u8>, _>>()
             .expect("failed to read image data")
     }
-
     /// Detects image format from magic bytes.
     fn detect_image_format(bytes: &[u8]) -> &'static str {
         if bytes.len() >= 8 && bytes[0..4] == [0x89, 0x50, 0x4E, 0x47] {
@@ -56,7 +52,6 @@ mod tests {
             "png"
         }
     }
-
     /// Builds a text run with the given text.
     fn make_run(text: &str) -> FRun {
         FRun {
@@ -64,7 +59,6 @@ mod tests {
             ..Default::default()
         }
     }
-
     /// Builds a styled text run.
     fn make_styled_run(text: &str, props: FRunProperties) -> FRun {
         FRun {
@@ -73,7 +67,6 @@ mod tests {
             ..Default::default()
         }
     }
-
     /// Builds a text paragraph with the given text.
     fn make_para(text: &str) -> FTextParagraph {
         FTextParagraph {
@@ -81,7 +74,6 @@ mod tests {
             ..Default::default()
         }
     }
-
     /// Builds a text body with a single paragraph.
     fn make_text_body(text: &str) -> FTextBody {
         FTextBody {
@@ -89,7 +81,6 @@ mod tests {
             paragraphs: vec![make_para(text)],
         }
     }
-
     /// Builds a simple text box shape.
     fn make_text_box(id: u32, name: &str, x: i64, y: i64, w: u32, h: u32, text: &str) -> FShape {
         FShape::TextBox(FShapeContainer {
@@ -105,7 +96,6 @@ mod tests {
             text_body: make_text_body(text),
         })
     }
-
     /// Builds an auto shape with fill and line.
     fn make_auto_shape(
         id: u32,
@@ -136,7 +126,6 @@ mod tests {
             line_width: Some(12700),
         })
     }
-
     /// Builds a picture shape with target path for media resolution.
     fn make_picture(
         id: u32,
@@ -165,7 +154,6 @@ mod tests {
             target: Some(target_path.to_string()),
         })
     }
-
     /// Builds a placeholder shape.
     fn make_placeholder(
         id: u32,
@@ -192,7 +180,6 @@ mod tests {
             text_body: make_text_body(text),
         })
     }
-
     /// Builds a table cell with text.
     fn make_cell(text: &str) -> FTableCell {
         FTableCell {
@@ -200,7 +187,6 @@ mod tests {
             ..Default::default()
         }
     }
-
     /// Builds a styled table cell.
     fn make_styled_cell(text: &str, fill: &str) -> FTableCell {
         FTableCell {
@@ -209,31 +195,25 @@ mod tests {
             ..Default::default()
         }
     }
-
     /// Builds a table shape.
     fn make_table(id: u32, name: &str, x: i64, y: i64, w: u32, h: u32) -> FShape {
         let header_fill = "4472C4";
-
         let mut row1 = FTableRow::default();
         row1.cells.push(make_styled_cell("Name", header_fill));
         row1.cells.push(make_styled_cell("Value", header_fill));
         row1.cells.push(make_styled_cell("Status", header_fill));
-
         let mut row2 = FTableRow::default();
         row2.cells.push(make_cell("Item A"));
         row2.cells.push(make_cell("100"));
         row2.cells.push(make_styled_cell("Active", "70AD47"));
-
         let mut row3 = FTableRow::default();
         row3.cells.push(make_cell("Item B"));
         row3.cells.push(make_cell("200"));
         row3.cells.push(make_styled_cell("Pending", "FFC000"));
-
         let mut row4 = FTableRow::default();
         row4.cells.push(make_cell("Item C"));
         row4.cells.push(make_cell("300"));
         row4.cells.push(make_styled_cell("Inactive", "FF0000"));
-
         let table = FTable {
             rows: vec![row1, row2, row3, row4],
             column_widths: vec![2000000, 1500000, 1500000],
@@ -242,7 +222,6 @@ mod tests {
             banded_rows: Some(true),
             ..Default::default()
         };
-
         FShape::GraphicFrame(FGraphicFrame {
             id,
             name: name.to_string(),
@@ -257,7 +236,6 @@ mod tests {
             chart_relationship_id: None,
         })
     }
-
     /// Builds a connector (line) shape.
     fn make_connector(
         id: u32,
@@ -285,7 +263,6 @@ mod tests {
             arrow_end: Some("triangle".to_string()),
         })
     }
-
     /// Builds a group shape containing child shapes.
     fn make_group(id: u32, name: &str, x: i64, y: i64, w: u32, h: u32) -> FShape {
         let child1 = make_auto_shape(
@@ -312,7 +289,6 @@ mod tests {
             "1971C2",
             "B",
         );
-
         FShape::Group(FGroupShape {
             id,
             name: name.to_string(),
@@ -326,7 +302,6 @@ mod tests {
             },
         })
     }
-
     /// Creates the theme for the presentation.
     fn make_theme() -> FTheme {
         FTheme {
@@ -356,7 +331,6 @@ mod tests {
             ..Default::default()
         }
     }
-
     /// Writes a comprehensive PPTX demo covering all features.
     #[test]
     fn write_demo_pptx() {
@@ -367,29 +341,24 @@ mod tests {
             size_type: Some("screen4x3".to_string()),
         };
         pres.theme = make_theme();
-
         // Download 4 test images.
         let img1_bytes = download_image(TEST_IMAGE_URL_1);
         let img2_bytes = download_image(TEST_IMAGE_URL_2);
         let img3_bytes = download_image(TEST_IMAGE_URL_3);
         let img4_bytes = download_image(TEST_IMAGE_URL_4);
-
         let img1_ext = detect_image_format(&img1_bytes);
         let img2_ext = detect_image_format(&img2_bytes);
         let img3_ext = detect_image_format(&img3_bytes);
         let img4_ext = detect_image_format(&img4_bytes);
-
         println!("[image1] {} bytes, format: {}", img1_bytes.len(), img1_ext);
         println!("[image2] {} bytes, format: {}", img2_bytes.len(), img2_ext);
         println!("[image3] {} bytes, format: {}", img3_bytes.len(), img3_ext);
         println!("[image4] {} bytes, format: {}", img4_bytes.len(), img4_ext);
-
         // Store images in package parts.
         let img1_path = format!("ppt/media/image1.{}", img1_ext);
         let img2_path = format!("ppt/media/image2.{}", img2_ext);
         let img3_path = format!("ppt/media/image3.{}", img3_ext);
         let img4_path = format!("ppt/media/image4.{}", img4_ext);
-
         pres.package.parts.push(FPackagePart {
             path: img1_path.clone(),
             data: img1_bytes,
@@ -406,7 +375,6 @@ mod tests {
             path: img4_path.clone(),
             data: img4_bytes,
         });
-
         // Slide 1: Title slide with background and placeholders.
         let mut slide1 = FSlide::default();
         slide1.background = Some(FBackground {
@@ -441,7 +409,6 @@ mod tests {
             advance_after_ms: None,
             ..Default::default()
         });
-
         // Slide 2: Text content with formatting.
         let mut slide2 = FSlide::default();
         slide2.background = Some(FBackground {
@@ -449,16 +416,13 @@ mod tests {
             color: Some("FFFFFF".to_string()),
             ..Default::default()
         });
-
         let mut title_para = make_para("Text Formatting Examples");
         title_para.alignment = Some(FParagraphAlignment::Center);
-
         let mut title_body = FTextBody {
             body_properties: FTextBodyProperties::default(),
             paragraphs: vec![title_para],
         };
         title_body.body_properties.anchor = Some("ctr".to_string());
-
         slide2.shapes.push(FShape::TextBox(FShapeContainer {
             id: 1,
             name: "Title".to_string(),
@@ -471,7 +435,6 @@ mod tests {
             },
             text_body: title_body,
         }));
-
         // Text box with mixed formatting.
         let mut mixed_para = FTextParagraph::default();
         mixed_para.runs.push(make_styled_run(
@@ -521,7 +484,6 @@ mod tests {
                 ..Default::default()
             },
         ));
-
         slide2.shapes.push(FShape::TextBox(FShapeContainer {
             id: 2,
             name: "MixedText".to_string(),
@@ -537,7 +499,6 @@ mod tests {
                 paragraphs: vec![mixed_para],
             },
         }));
-
         // Bullet points.
         let mut bullets = Vec::new();
         for (i, text) in [
@@ -554,7 +515,6 @@ mod tests {
             para.space_before = Some(i as u32 * 100);
             bullets.push(para);
         }
-
         slide2.shapes.push(FShape::TextBox(FShapeContainer {
             id: 3,
             name: "Bullets".to_string(),
@@ -570,7 +530,6 @@ mod tests {
                 paragraphs: bullets,
             },
         }));
-
         // Auto shapes showcase.
         slide2.shapes.push(make_auto_shape(
             4,
@@ -620,12 +579,10 @@ mod tests {
             "BF8F00",
             "Triangle",
         ));
-
         // Connector line.
         slide2.shapes.push(make_connector(
             8, "Line1", 800000, 4000000, 4000000, 0, "4472C4",
         ));
-
         // Slide 3: Images.
         let mut slide3 = FSlide::default();
         slide3.background = Some(FBackground {
@@ -633,7 +590,6 @@ mod tests {
             color: Some("F5F5F5".to_string()),
             ..Default::default()
         });
-
         slide3.shapes.push(make_text_box(
             1,
             "ImageTitle",
@@ -643,7 +599,6 @@ mod tests {
             500000,
             "Image Gallery (4 Network Images)",
         ));
-
         // Picture 1 with target path.
         slide3.shapes.push(make_picture(
             2,
@@ -656,7 +611,6 @@ mod tests {
             &img1_path,
             "Downloaded image 1",
         ));
-
         // Picture 2 with target path.
         slide3.shapes.push(make_picture(
             3,
@@ -669,7 +623,6 @@ mod tests {
             &img2_path,
             "Downloaded image 2",
         ));
-
         // Picture 3 with target path.
         slide3.shapes.push(make_picture(
             4,
@@ -682,7 +635,6 @@ mod tests {
             &img3_path,
             "Downloaded image 3",
         ));
-
         // Picture 4 with target path.
         slide3.shapes.push(make_picture(
             5,
@@ -695,7 +647,6 @@ mod tests {
             &img4_path,
             "Downloaded image 4",
         ));
-
         // Group shape with labels.
         slide3.shapes.push(make_group(
             6,
@@ -705,7 +656,6 @@ mod tests {
             1100000,
             500000,
         ));
-
         // Slide 4: Table.
         let mut slide4 = FSlide::default();
         slide4.background = Some(FBackground {
@@ -713,7 +663,6 @@ mod tests {
             color: Some("FFFFFF".to_string()),
             ..Default::default()
         });
-
         slide4.shapes.push(make_text_box(
             1,
             "TableTitle",
@@ -723,7 +672,6 @@ mod tests {
             500000,
             "Data Table Example",
         ));
-
         slide4.shapes.push(make_table(
             2,
             "DataTable",
@@ -732,7 +680,6 @@ mod tests {
             5000000,
             2000000,
         ));
-
         // Add a note below the table.
         slide4.shapes.push(make_text_box(
             3,
@@ -743,7 +690,6 @@ mod tests {
             400000,
             "This table demonstrates cell styling, fills, and borders.",
         ));
-
         // Build slides list.
         pres.slides = vec![
             FSlideId {
@@ -767,19 +713,16 @@ mod tests {
                 slide: Some(Box::new(slide4)),
             },
         ];
-
         // Serialize and write.
         let bytes = pres.to_bytes().expect("failed to serialize presentation");
         println!("[writer] serialized presentation: {} bytes", bytes.len());
         std::fs::write(demo_path(), &bytes).expect("failed to write demo.pptx");
         println!("demo.pptx written to {}", demo_path().display());
     }
-
     /// Reads the demo PPTX and prints its contents.
     #[test]
     fn read_demo_pptx() {
         let pres = FPresentation::with_path(demo_path()).expect("failed to read demo.pptx");
-
         println!("=== Presentation Info ===");
         println!("Slide Count: {}", pres.slide_count());
         println!(
@@ -787,7 +730,6 @@ mod tests {
             pres.slide_size.width, pres.slide_size.height, pres.slide_size.size_type
         );
         println!();
-
         println!("=== Theme ===");
         if let Some(name) = &pres.theme.name {
             println!("Theme Name: {}", name);
@@ -801,7 +743,6 @@ mod tests {
         println!("  Major Latin: {:?}", pres.theme.font_scheme.major_latin);
         println!("  Minor Latin: {:?}", pres.theme.font_scheme.minor_latin);
         println!();
-
         println!("=== Slides ===");
         for (idx, slide_id) in pres.slides.iter().enumerate() {
             println!("Slide {} (rId={}):", idx + 1, slide_id.relationship_id);
@@ -929,10 +870,8 @@ mod tests {
             }
             println!();
         }
-
         println!("=== Plain Text ===");
         println!("{}", pres.plain_text());
-
         println!("=== Package Parts ===");
         println!("Total parts: {}", pres.package.parts.len());
         for part in &pres.package.parts {
