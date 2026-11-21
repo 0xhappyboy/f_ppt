@@ -10,10 +10,8 @@ use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use zip::ZipWriter;
 use zip::write::FileOptions;
-
 /// XML declaration shared by every serialized part.
 const XML_DECL: &str = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n";
-
 /// Package root relationships part.
 const ROOT_RELS_XML: &str = concat!(
     "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n",
@@ -21,14 +19,12 @@ const ROOT_RELS_XML: &str = concat!(
     "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"ppt/presentation.xml\"/>",
     "</Relationships>"
 );
-
 /// Per-slide image reference resolved for serialization.
 #[derive(Clone)]
 struct SlideImageRef {
     new_rid: String,
     filename: String,
 }
-
 /// Image serialization plan shared across the package.
 struct ImagePlan {
     /// Mapping from original relationship id to new relationship id per slide.
@@ -36,24 +32,19 @@ struct ImagePlan {
     /// Media files keyed by target file name.
     files: Vec<(String, Vec<u8>)>,
 }
-
 /// Serializes a complete presentation to bytes.
 pub(crate) fn serialize_presentation(pres: &FPresentation) -> crate::FPptResult<Vec<u8>> {
     println!(
         "[DEBUG] serialize_presentation: starting with {} slides",
         pres.slide_count()
     );
-
     let plan = build_image_plan(pres);
-
     let cursor = std::io::Cursor::new(Vec::new());
     let mut writer = ZipWriter::new(cursor);
     let options: FileOptions<'_, '_, ()> =
         FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
-
     let has_theme = pres.theme.raw_xml.is_some() || pres.theme.name.is_some();
     println!("[DEBUG] has_theme: {}", has_theme);
-
     // Required package parts.
     writer.start_file("[Content_Types].xml", options)?;
     let media_extensions: Vec<String> = plan
@@ -65,25 +56,26 @@ pub(crate) fn serialize_presentation(pres: &FPresentation) -> crate::FPptResult<
     println!("[DEBUG] [Content_Types].xml length: {}", ct_xml.len());
     writer.write_all(ct_xml.as_bytes())?;
     println!("[DEBUG] [Content_Types].xml written");
-
     writer.start_file("_rels/.rels", options)?;
     writer.write_all(ROOT_RELS_XML.as_bytes())?;
     println!("[DEBUG] _rels/.rels written");
-
     // Presentation relationships returns tuple: (xml_string, theme_rid, master_rid, layout_rid)
     println!("[DEBUG] calling serialize_presentation_rels()...");
     let (pres_rels_xml, theme_rid, master_rid, _layout_rid) = serialize_presentation_rels(pres);
     println!("[DEBUG] serialize_presentation_rels() returned");
-    println!("[DEBUG] theme_rid: {:?}, master_rid: {:?}", theme_rid, master_rid);
-    
+    println!(
+        "[DEBUG] theme_rid: {:?}, master_rid: {:?}",
+        theme_rid, master_rid
+    );
     println!("[DEBUG] calling serialize_presentation_xml()...");
     let pres_xml = serialize_presentation_xml(pres, master_rid.as_deref());
-    println!("[DEBUG] serialize_presentation_xml() returned, length: {}", pres_xml.len());
-    
+    println!(
+        "[DEBUG] serialize_presentation_xml() returned, length: {}",
+        pres_xml.len()
+    );
     writer.start_file("ppt/presentation.xml", options)?;
     writer.write_all(pres_xml.as_bytes())?;
     println!("[DEBUG] presentation.xml written");
-
     println!(
         "[DEBUG] presentation.xml.rels length: {}",
         pres_rels_xml.len()
@@ -91,7 +83,6 @@ pub(crate) fn serialize_presentation(pres: &FPresentation) -> crate::FPptResult<
     writer.start_file("ppt/_rels/presentation.xml.rels", options)?;
     writer.write_all(pres_rels_xml.as_bytes())?;
     println!("[DEBUG] presentation.xml.rels written");
-
     // Theme.
     if has_theme {
         let theme_xml = serialize_theme(&pres.theme);
@@ -100,49 +91,54 @@ pub(crate) fn serialize_presentation(pres: &FPresentation) -> crate::FPptResult<
         writer.write_all(theme_xml.as_bytes())?;
         println!("[DEBUG] theme1.xml written");
     }
-
     // Slide master (required by OOXML spec).
     println!("[DEBUG] calling serialize_slide_master()...");
     let slide_master_xml = serialize_slide_master();
-    println!("[DEBUG] serialize_slide_master() returned, length: {}", slide_master_xml.len());
+    println!(
+        "[DEBUG] serialize_slide_master() returned, length: {}",
+        slide_master_xml.len()
+    );
     writer.start_file("ppt/slideMasters/slideMaster1.xml", options)?;
     println!("[DEBUG] slideMaster1.xml start_file ok");
     writer.write_all(slide_master_xml.as_bytes())?;
     println!("[DEBUG] slideMaster1.xml written");
-
     println!("[DEBUG] calling serialize_slide_master_rels()...");
     let slide_master_rels_xml = serialize_slide_master_rels(has_theme);
-    println!("[DEBUG] serialize_slide_master_rels() returned, length: {}", slide_master_rels_xml.len());
+    println!(
+        "[DEBUG] serialize_slide_master_rels() returned, length: {}",
+        slide_master_rels_xml.len()
+    );
     writer.start_file("ppt/slideMasters/_rels/slideMaster1.xml.rels", options)?;
     println!("[DEBUG] slideMaster1.xml.rels start_file ok");
     writer.write_all(slide_master_rels_xml.as_bytes())?;
     println!("[DEBUG] slideMaster1.xml.rels written");
-
     // Slide layout (required by OOXML spec).
     println!("[DEBUG] calling serialize_slide_layout()...");
     let slide_layout_xml = serialize_slide_layout();
-    println!("[DEBUG] serialize_slide_layout() returned, length: {}", slide_layout_xml.len());
+    println!(
+        "[DEBUG] serialize_slide_layout() returned, length: {}",
+        slide_layout_xml.len()
+    );
     writer.start_file("ppt/slideLayouts/slideLayout1.xml", options)?;
     println!("[DEBUG] slideLayout1.xml start_file ok");
     writer.write_all(slide_layout_xml.as_bytes())?;
     println!("[DEBUG] slideLayout1.xml written");
-
     println!("[DEBUG] calling serialize_slide_layout_rels()...");
     let slide_layout_rels_xml = serialize_slide_layout_rels();
-    println!("[DEBUG] serialize_slide_layout_rels() returned, length: {}", slide_layout_rels_xml.len());
+    println!(
+        "[DEBUG] serialize_slide_layout_rels() returned, length: {}",
+        slide_layout_rels_xml.len()
+    );
     writer.start_file("ppt/slideLayouts/_rels/slideLayout1.xml.rels", options)?;
     println!("[DEBUG] slideLayout1.xml.rels start_file ok");
     writer.write_all(slide_layout_rels_xml.as_bytes())?;
     println!("[DEBUG] slideLayout1.xml.rels written");
-
     // Slides.
     for (idx, slide_id) in pres.slides.iter().enumerate() {
         let slide_num = idx + 1;
         let slide_path = format!("ppt/slides/slide{}.xml", slide_num);
-
         let empty = HashMap::new();
         let slide_images = plan.per_slide.get(idx).unwrap_or(&empty);
-
         let slide_xml = match &slide_id.slide {
             Some(slide) => serialize_slide(slide, slide_images),
             None => serialize_empty_slide(),
@@ -151,7 +147,6 @@ pub(crate) fn serialize_presentation(pres: &FPresentation) -> crate::FPptResult<
         writer.start_file(slide_path.as_str(), options)?;
         writer.write_all(slide_xml.as_bytes())?;
         println!("[DEBUG] slide{}.xml written", slide_num);
-
         // Only generate .rels file if there are image relationships
         if !slide_images.is_empty() {
             let slide_rels_xml = serialize_slide_rels(slide_images);
@@ -167,7 +162,6 @@ pub(crate) fn serialize_presentation(pres: &FPresentation) -> crate::FPptResult<
             println!("[DEBUG] slide{}.xml.rels written", slide_num);
         }
     }
-
     // Media parts.
     for (name, data) in &plan.files {
         let path = format!("ppt/media/{}", name);
@@ -180,7 +174,6 @@ pub(crate) fn serialize_presentation(pres: &FPresentation) -> crate::FPptResult<
         writer.write_all(data)?;
     }
     println!("[DEBUG] all media parts written");
-
     // Preserved parts (everything else).
     for part in &pres.package.parts {
         if part.path == "[Content_Types].xml"
@@ -204,7 +197,6 @@ pub(crate) fn serialize_presentation(pres: &FPresentation) -> crate::FPptResult<
         writer.write_all(&part.data)?;
     }
     println!("[DEBUG] all preserved parts written");
-
     println!("[DEBUG] calling writer.finish()...");
     let cursor = writer.finish()?;
     println!(
@@ -213,7 +205,6 @@ pub(crate) fn serialize_presentation(pres: &FPresentation) -> crate::FPptResult<
     );
     Ok(cursor.into_inner())
 }
-
 /// Builds the image plan by scanning all slides for pictures and matching them to media parts.
 fn build_image_plan(pres: &FPresentation) -> ImagePlan {
     // Map from normalized package path (e.g. ppt/media/image1.jpg) to bytes.
@@ -223,7 +214,6 @@ fn build_image_plan(pres: &FPresentation) -> ImagePlan {
             media_parts.insert(part.path.clone(), part.data.clone());
         }
     }
-
     println!(
         "[DEBUG] build_image_plan: found {} media parts",
         media_parts.len()
@@ -231,14 +221,11 @@ fn build_image_plan(pres: &FPresentation) -> ImagePlan {
     for (path, _) in &media_parts {
         println!("[DEBUG]   media part: {}", path);
     }
-
     let mut target_to_name: HashMap<String, String> = HashMap::new();
     let mut files: Vec<(String, Vec<u8>)> = Vec::new();
     let mut used_names: HashSet<String> = HashSet::new();
     let mut counter: u32 = 0;
-
     let mut per_slide: Vec<HashMap<String, SlideImageRef>> = Vec::new();
-
     for (idx, slide_id) in pres.slides.iter().enumerate() {
         let mut map: HashMap<String, SlideImageRef> = HashMap::new();
         if let Some(slide) = &slide_id.slide {
@@ -255,7 +242,6 @@ fn build_image_plan(pres: &FPresentation) -> ImagePlan {
         println!("[DEBUG] slide {} has {} images", idx + 1, map.len());
         per_slide.push(map);
     }
-
     // Preserve unreferenced media parts with original basenames.
     for part in &pres.package.parts {
         if !part.path.starts_with("ppt/media/") {
@@ -268,10 +254,8 @@ fn build_image_plan(pres: &FPresentation) -> ImagePlan {
         used_names.insert(basename.clone());
         files.push((basename, part.data.clone()));
     }
-
     ImagePlan { per_slide, files }
 }
-
 /// Recursively collects images from shapes into the plan.
 fn collect_slide_images(
     shapes: &[FShape],
@@ -288,7 +272,6 @@ fn collect_slide_images(
                 if map.contains_key(&pic.relationship_id) {
                     continue;
                 }
-
                 let resolved = resolve_picture_media(pic, media_parts);
                 let (key, bytes) = match resolved {
                     Some(v) => v,
@@ -300,7 +283,6 @@ fn collect_slide_images(
                         continue;
                     }
                 };
-
                 let filename = if let Some(name) = target_to_name.get(&key) {
                     name.clone()
                 } else {
@@ -318,7 +300,6 @@ fn collect_slide_images(
                     files.push((name.clone(), bytes));
                     name
                 };
-
                 let new_rid = format!("rIdImg{}", map.len() + 1);
                 println!(
                     "[DEBUG] mapped picture {} -> {} ({})",
@@ -344,7 +325,6 @@ fn collect_slide_images(
         }
     }
 }
-
 /// Resolves the media part and key for a picture.
 fn resolve_picture_media(
     pic: &FPicture,
@@ -361,7 +341,6 @@ fn resolve_picture_media(
             return Some((normalized, bytes.clone()));
         }
     }
-
     // Fallback: derive expected filename from relationship id (rIdImg1 -> image1.*).
     let digits: String = pic
         .relationship_id
@@ -376,17 +355,14 @@ fn resolve_picture_media(
             }
         }
     }
-
     // Fallback: single media part if only one is present.
     if media_parts.len() == 1 {
         if let Some((path, data)) = media_parts.iter().next() {
             return Some((path.clone(), data.clone()));
         }
     }
-
     None
 }
-
 /// Normalizes a relationship target to a package path.
 fn normalize_target(target: &str) -> String {
     let mut t = target.trim();
@@ -403,12 +379,10 @@ fn normalize_target(target: &str) -> String {
         format!("ppt/{}", t)
     }
 }
-
 /// Extracts a lowercase file extension from a path.
 fn file_extension(path: &str) -> String {
     path.rsplit('.').next().unwrap_or("png").to_lowercase()
 }
-
 /// Serializes the package content types part.
 fn serialize_content_types(
     slide_count: usize,
@@ -420,11 +394,9 @@ fn serialize_content_types(
     out.push_str("<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">");
     out.push_str("<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>");
     out.push_str("<Default Extension=\"xml\" ContentType=\"application/xml\"/>");
-
     let mut declared: HashSet<String> = HashSet::new();
     declared.insert("rels".to_string());
     declared.insert("xml".to_string());
-
     let base: &[(&str, &str)] = &[
         ("jpeg", "image/jpeg"),
         ("jpg", "image/jpeg"),
@@ -443,7 +415,6 @@ fn serialize_content_types(
         ));
         declared.insert(ext.to_string());
     }
-
     for ext in media_extensions {
         if declared.insert(ext.clone()) {
             let ct = match ext.as_str() {
@@ -462,7 +433,6 @@ fn serialize_content_types(
             ));
         }
     }
-
     out.push_str("<Override PartName=\"/ppt/presentation.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml\"/>");
     // Slide master and layout are required parts
     out.push_str("<Override PartName=\"/ppt/slideMasters/slideMaster1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml\"/>");
@@ -479,7 +449,6 @@ fn serialize_content_types(
     out.push_str("</Types>");
     out
 }
-
 /// Serializes the main presentation part.
 fn serialize_presentation_xml(pres: &FPresentation, master_rid: Option<&str>) -> String {
     let mut out = String::new();
@@ -520,19 +489,18 @@ fn serialize_presentation_xml(pres: &FPresentation, master_rid: Option<&str>) ->
     out.push_str("</p:presentation>");
     out
 }
-
 /// Serializes presentation relationships.
 /// Returns (rels_xml, theme_rid, master_rid, layout_rid)
-fn serialize_presentation_rels(pres: &FPresentation) -> (String, Option<String>, Option<String>, Option<String>) {
+fn serialize_presentation_rels(
+    pres: &FPresentation,
+) -> (String, Option<String>, Option<String>, Option<String>) {
     let mut out = String::new();
     out.push_str(XML_DECL);
     out.push_str(
         "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">",
     );
-
     let mut used_ids: HashSet<String> = HashSet::new();
     let mut next_id = 1u32;
-
     // Slide master relationship (required)
     let master_rid = format!("rId{}", next_id);
     used_ids.insert(master_rid.clone());
@@ -541,10 +509,8 @@ fn serialize_presentation_rels(pres: &FPresentation) -> (String, Option<String>,
         "<Relationship Id=\"{}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster\" Target=\"slideMasters/slideMaster1.xml\"/>",
         encode_xml_text(&master_rid)
     ));
-
     // Note: slideLayout is NOT linked from presentation.xml.rels
     // It is only linked from slideMaster1.xml.rels
-
     for (idx, slide_id) in pres.slides.iter().enumerate() {
         // Generate a unique rid, don't use the original one if it conflicts
         let mut rid = if slide_id.relationship_id.is_empty() {
@@ -565,7 +531,6 @@ fn serialize_presentation_rels(pres: &FPresentation) -> (String, Option<String>,
             idx + 1
         ));
     }
-
     let mut theme_rid: Option<String> = None;
     if pres.theme.raw_xml.is_some() || pres.theme.name.is_some() {
         let mut trid = format!("rId{}", next_id);
@@ -580,11 +545,9 @@ fn serialize_presentation_rels(pres: &FPresentation) -> (String, Option<String>,
         ));
         theme_rid = Some(trid);
     }
-
     out.push_str("</Relationships>");
     (out, theme_rid, Some(master_rid), None)
 }
-
 /// Serializes slide relationships for images.
 fn serialize_slide_rels(slide_images: &HashMap<String, SlideImageRef>) -> String {
     let mut out = String::new();
@@ -592,10 +555,8 @@ fn serialize_slide_rels(slide_images: &HashMap<String, SlideImageRef>) -> String
     out.push_str(
         "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">",
     );
-
     let mut entries: Vec<&SlideImageRef> = slide_images.values().collect();
     entries.sort_by(|a, b| a.new_rid.cmp(&b.new_rid));
-
     for img in entries {
         out.push_str(&format!(
             "<Relationship Id=\"{}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"../media/{}\"/>",
@@ -603,11 +564,9 @@ fn serialize_slide_rels(slide_images: &HashMap<String, SlideImageRef>) -> String
             encode_xml_text(&img.filename)
         ));
     }
-
     out.push_str("</Relationships>");
     out
 }
-
 /// Serializes an empty slide.
 fn serialize_empty_slide() -> String {
     let mut out = String::new();
@@ -623,7 +582,6 @@ fn serialize_empty_slide() -> String {
     out.push_str("</p:sld>");
     out
 }
-
 /// Serializes a slide.
 fn serialize_slide(slide: &FSlide, slide_images: &HashMap<String, SlideImageRef>) -> String {
     let mut out = String::new();
@@ -653,7 +611,6 @@ fn serialize_slide(slide: &FSlide, slide_images: &HashMap<String, SlideImageRef>
     out.push_str("</p:sld>");
     out
 }
-
 /// Serializes slide background.
 fn serialize_background(bg: &crate::core::slide::FBackground) -> String {
     let mut out = String::from("<p:bg><p:bgPr>");
@@ -678,7 +635,6 @@ fn serialize_background(bg: &crate::core::slide::FBackground) -> String {
     out.push_str("<a:effectLst/></p:bgPr></p:bg>");
     out
 }
-
 /// Serializes slide transition.
 fn serialize_transition(trans: &crate::core::slide::FSlideTransition) -> String {
     let mut out = String::from("<p:transition");
@@ -700,7 +656,6 @@ fn serialize_transition(trans: &crate::core::slide::FSlideTransition) -> String 
     }
     out
 }
-
 /// Serializes a shape.
 fn serialize_shape(
     shape: &FShape,
@@ -716,7 +671,6 @@ fn serialize_shape(
         FShape::Placeholder(ph) => Some(serialize_placeholder(ph)),
     }
 }
-
 /// Serializes an xfrm element with rotation and flip attributes (a:xfrm namespace).
 fn serialize_xfrm(props: &FShapeProperties) -> String {
     let mut out = String::from("<a:xfrm");
@@ -735,7 +689,6 @@ fn serialize_xfrm(props: &FShapeProperties) -> String {
     ));
     out
 }
-
 /// Serializes a p:xfrm element for graphicFrame (must use p: namespace).
 fn serialize_p_xfrm(props: &FShapeProperties) -> String {
     let mut out = String::from("<p:xfrm");
@@ -754,7 +707,6 @@ fn serialize_p_xfrm(props: &FShapeProperties) -> String {
     ));
     out
 }
-
 /// Serializes shape properties with a preset rectangle geometry.
 fn serialize_shape_properties(props: &FShapeProperties) -> String {
     let mut out = String::from("<p:spPr>");
@@ -763,7 +715,6 @@ fn serialize_shape_properties(props: &FShapeProperties) -> String {
     out.push_str("</p:spPr>");
     out
 }
-
 /// Serializes shape properties without geometry (for pictures and frames).
 fn serialize_shape_properties_no_geom(props: &FShapeProperties) -> String {
     let mut out = String::from("<p:spPr>");
@@ -771,7 +722,6 @@ fn serialize_shape_properties_no_geom(props: &FShapeProperties) -> String {
     out.push_str("</p:spPr>");
     out
 }
-
 /// Serializes a text box.
 fn serialize_text_box(tb: &FShapeContainer) -> String {
     let mut out = String::new();
@@ -786,7 +736,6 @@ fn serialize_text_box(tb: &FShapeContainer) -> String {
     out.push_str("</p:sp>");
     out
 }
-
 /// Serializes an auto shape.
 fn serialize_auto_shape(auto: &FAutoShape) -> String {
     let mut out = String::new();
@@ -821,7 +770,6 @@ fn serialize_auto_shape(auto: &FAutoShape) -> String {
     out.push_str("</p:sp>");
     out
 }
-
 /// Converts auto shape type to string.
 fn auto_shape_type_to_str(t: FAutoShapeType) -> &'static str {
     match t {
@@ -914,7 +862,6 @@ fn auto_shape_type_to_str(t: FAutoShapeType) -> &'static str {
         FAutoShapeType::ChartX => "chartX",
     }
 }
-
 /// Serializes a picture.
 /// Element order per CT_Picture: nvPicPr, blipFill, spPr, style
 fn serialize_picture(
@@ -922,7 +869,6 @@ fn serialize_picture(
     slide_images: &HashMap<String, SlideImageRef>,
 ) -> Option<String> {
     let img = slide_images.get(&pic.relationship_id)?;
-
     let mut out = String::new();
     out.push_str("<p:pic>");
     out.push_str(&format!(
@@ -947,7 +893,6 @@ fn serialize_picture(
     out.push_str("</p:pic>");
     Some(out)
 }
-
 /// Serializes a group shape.
 fn serialize_group(grp: &FGroupShape, slide_images: &HashMap<String, SlideImageRef>) -> String {
     let mut out = String::new();
@@ -986,7 +931,6 @@ fn serialize_group(grp: &FGroupShape, slide_images: &HashMap<String, SlideImageR
     out.push_str("</p:grpSp>");
     out
 }
-
 /// Serializes a connector.
 fn serialize_connector(cxn: &FConnector) -> String {
     let mut out = String::new();
@@ -1025,7 +969,6 @@ fn serialize_connector(cxn: &FConnector) -> String {
     out.push_str("</p:cxnSp>");
     out
 }
-
 /// Serializes a graphic frame.
 /// graphicFrame uses p:xfrm (not a:xfrm) per CT_GraphicalObjectFrame
 fn serialize_graphic_frame(gf: &FGraphicFrame) -> Option<String> {
@@ -1045,7 +988,6 @@ fn serialize_graphic_frame(gf: &FGraphicFrame) -> Option<String> {
     } else {
         return None;
     };
-
     let mut out = String::new();
     out.push_str("<p:graphicFrame>");
     out.push_str(&format!(
@@ -1062,7 +1004,6 @@ fn serialize_graphic_frame(gf: &FGraphicFrame) -> Option<String> {
     out.push_str("</p:graphicFrame>");
     Some(out)
 }
-
 /// Serializes a placeholder.
 fn serialize_placeholder(ph: &FPlaceholder) -> String {
     let mut out = String::new();
@@ -1081,7 +1022,6 @@ fn serialize_placeholder(ph: &FPlaceholder) -> String {
     out.push_str("</p:sp>");
     out
 }
-
 /// Converts placeholder type to string.
 fn placeholder_type_to_str(t: FPlaceholderType) -> &'static str {
     match t {
@@ -1101,7 +1041,6 @@ fn placeholder_type_to_str(t: FPlaceholderType) -> &'static str {
         FPlaceholderType::None => "",
     }
 }
-
 /// Serializes a text body.
 fn serialize_text_body(body: &FTextBody) -> String {
     let mut out = String::new();
@@ -1117,7 +1056,6 @@ fn serialize_text_body(body: &FTextBody) -> String {
     out.push_str("</p:txBody>");
     out
 }
-
 /// Serializes text body properties.
 fn serialize_text_body_properties(props: &FTextBodyProperties) -> String {
     let mut out = String::from("<a:bodyPr");
@@ -1151,7 +1089,6 @@ fn serialize_text_body_properties(props: &FTextBodyProperties) -> String {
     out.push_str("/>");
     out
 }
-
 /// Serializes a text paragraph.
 fn serialize_text_paragraph(para: &FTextParagraph) -> String {
     let mut out = String::new();
@@ -1161,7 +1098,6 @@ fn serialize_text_paragraph(para: &FTextParagraph) -> String {
         || para.space_before.is_some()
         || para.space_after.is_some()
         || para.bullet_char.is_some();
-
     out.push_str("<a:p>");
     if has_ppr {
         let mut ppr_attrs = String::new();
@@ -1180,7 +1116,6 @@ fn serialize_text_paragraph(para: &FTextParagraph) -> String {
         if let Some(lvl) = para.indent_level {
             ppr_attrs.push_str(&format!(" lvl=\"{}\"", lvl));
         }
-
         let mut ppr_children = String::new();
         if let Some(spc) = para.line_spacing {
             ppr_children.push_str(&format!("<a:lnSpc><a:spcPct val=\"{}\"/></a:lnSpc>", spc));
@@ -1197,7 +1132,6 @@ fn serialize_text_paragraph(para: &FTextParagraph) -> String {
                 encode_xml_text(bu)
             ));
         }
-
         if ppr_children.is_empty() {
             out.push_str(&format!("<a:pPr{}/>", ppr_attrs));
         } else {
@@ -1211,7 +1145,6 @@ fn serialize_text_paragraph(para: &FTextParagraph) -> String {
     out.push_str("</a:p>");
     out
 }
-
 /// Serializes a text run.
 fn serialize_text_run(run: &FRun) -> String {
     let mut out = String::new();
@@ -1221,7 +1154,6 @@ fn serialize_text_run(run: &FRun) -> String {
     out.push_str("</a:r>");
     out
 }
-
 /// Serializes run properties.
 fn serialize_run_properties(props: &FRunProperties) -> String {
     let has_content = props.bold.is_some()
@@ -1237,11 +1169,9 @@ fn serialize_run_properties(props: &FRunProperties) -> String {
         || props.baseline.is_some()
         || props.spacing.is_some()
         || props.font_family_east_asia.is_some();
-
     if !has_content {
         return String::new();
     }
-
     let mut attrs = String::new();
     if let Some(sz) = props.size {
         attrs.push_str(&format!(" sz=\"{}\"", sz));
@@ -1273,7 +1203,6 @@ fn serialize_run_properties(props: &FRunProperties) -> String {
     if let Some(spc) = props.spacing {
         attrs.push_str(&format!(" spc=\"{}\"", spc));
     }
-
     let mut children = String::new();
     if let Some(font) = &props.font_family {
         children.push_str(&format!(
@@ -1299,19 +1228,16 @@ fn serialize_run_properties(props: &FRunProperties) -> String {
             encode_xml_text(hl)
         ));
     }
-
     if children.is_empty() {
         format!("<a:rPr{}/>", attrs)
     } else {
         format!("<a:rPr{}>{}</a:rPr>", attrs, children)
     }
 }
-
 /// Serializes a table.
 fn serialize_table(table: &FTable) -> String {
     let mut out = String::new();
     out.push_str("<a:tbl>");
-
     let mut tbl_pr_attrs = String::new();
     if let Some(fr) = table.first_row {
         tbl_pr_attrs.push_str(&format!(" firstRow=\"{}\"", if fr { "1" } else { "0" }));
@@ -1319,7 +1245,6 @@ fn serialize_table(table: &FTable) -> String {
     if let Some(br) = table.banded_rows {
         tbl_pr_attrs.push_str(&format!(" bandRow=\"{}\"", if br { "1" } else { "0" }));
     }
-
     if let Some(style_id) = &table.style_id {
         // tableStyleId must be a GUID in format {XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}
         let guid = if is_valid_guid(style_id) {
@@ -1335,21 +1260,17 @@ fn serialize_table(table: &FTable) -> String {
     } else {
         out.push_str(&format!("<a:tblPr{}/>", tbl_pr_attrs));
     }
-
     out.push_str("<a:tblGrid>");
     for width in &table.column_widths {
         out.push_str(&format!("<a:gridCol w=\"{}\"/>", width));
     }
     out.push_str("</a:tblGrid>");
-
     for row in &table.rows {
         out.push_str(&serialize_table_row(row));
     }
-
     out.push_str("</a:tbl>");
     out
 }
-
 /// Checks if a string is a valid GUID in the format {XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}.
 fn is_valid_guid(s: &str) -> bool {
     let s = s.trim();
@@ -1375,7 +1296,6 @@ fn is_valid_guid(s: &str) -> bool {
     }
     true
 }
-
 /// Serializes a table row.
 fn serialize_table_row(row: &FTableRow) -> String {
     let mut out = String::new();
@@ -1389,12 +1309,10 @@ fn serialize_table_row(row: &FTableRow) -> String {
     out.push_str("</a:tr>");
     out
 }
-
 /// Serializes a table cell.
 fn serialize_table_cell(cell: &crate::core::table::FTableCell) -> String {
     let mut out = String::new();
     out.push_str("<a:tc>");
-
     out.push_str("<a:txBody><a:bodyPr/><a:lstStyle/>");
     if cell.paragraphs.is_empty() {
         out.push_str("<a:p><a:endParaRPr lang=\"en-US\"/></a:p>");
@@ -1404,7 +1322,6 @@ fn serialize_table_cell(cell: &crate::core::table::FTableCell) -> String {
         }
     }
     out.push_str("</a:txBody>");
-
     let mut tcpr_attrs = String::new();
     if cell.row_span > 1 {
         tcpr_attrs.push_str(&format!(" rowSpan=\"{}\"", cell.row_span));
@@ -1415,7 +1332,6 @@ fn serialize_table_cell(cell: &crate::core::table::FTableCell) -> String {
     if let Some(anchor) = &cell.vertical_anchor {
         tcpr_attrs.push_str(&format!(" anchor=\"{}\"", encode_xml_text(anchor)));
     }
-
     let mut tcpr_children = String::new();
     if let Some(fill) = &cell.fill_color {
         tcpr_children.push_str(&format!(
@@ -1423,17 +1339,14 @@ fn serialize_table_cell(cell: &crate::core::table::FTableCell) -> String {
             encode_xml_text(fill)
         ));
     }
-
     if tcpr_children.is_empty() {
         out.push_str(&format!("<a:tcPr{}/>", tcpr_attrs));
     } else {
         out.push_str(&format!("<a:tcPr{}>{}</a:tcPr>", tcpr_attrs, tcpr_children));
     }
-
     out.push_str("</a:tc>");
     out
 }
-
 /// Serializes theme.
 fn serialize_theme(theme: &crate::core::theme::FTheme) -> String {
     let mut out = String::new();
@@ -1443,7 +1356,6 @@ fn serialize_theme(theme: &crate::core::theme::FTheme) -> String {
         out.push_str(&format!(" name=\"{}\"", encode_xml_text(name)));
     }
     out.push_str("><a:themeElements>");
-
     out.push_str("<a:clrScheme");
     if let Some(name) = &theme.color_scheme.name {
         out.push_str(&format!(" name=\"{}\"", encode_xml_text(name)));
@@ -1473,7 +1385,6 @@ fn serialize_theme(theme: &crate::core::theme::FTheme) -> String {
         ));
     }
     out.push_str("</a:clrScheme>");
-
     out.push_str("<a:fontScheme");
     if let Some(name) = &theme.font_scheme.name {
         out.push_str(&format!(" name=\"{}\"", encode_xml_text(name)));
@@ -1495,7 +1406,6 @@ fn serialize_theme(theme: &crate::core::theme::FTheme) -> String {
     }
     out.push_str("<a:cs typeface=\"\"/>");
     out.push_str("</a:minorFont></a:fontScheme>");
-
     out.push_str("<a:fmtScheme name=\"Office\">");
     out.push_str("<a:fillStyleLst>");
     out.push_str("<a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill>");
@@ -1522,11 +1432,9 @@ fn serialize_theme(theme: &crate::core::theme::FTheme) -> String {
     out.push_str("<a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill>");
     out.push_str("</a:bgFillStyleLst>");
     out.push_str("</a:fmtScheme>");
-
     out.push_str("</a:themeElements></a:theme>");
     out
 }
-
 /// Serializes a minimal slide master (required by OOXML spec).
 fn serialize_slide_master() -> String {
     println!("[DEBUG] serialize_slide_master: starting");
@@ -1536,7 +1444,9 @@ fn serialize_slide_master() -> String {
     out.push_str("<p:cSld>");
     out.push_str("<p:bg><p:bgPr><a:solidFill><a:srgbClr val=\"FFFFFF\"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>");
     out.push_str("<p:spTree>");
-    out.push_str("<p:nvGrpSpPr><p:cNvPr id=\"1\" name=\"\"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>");
+    out.push_str(
+        "<p:nvGrpSpPr><p:cNvPr id=\"1\" name=\"\"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>",
+    );
     out.push_str("<p:grpSpPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"0\" cy=\"0\"/><a:chOff x=\"0\" y=\"0\"/><a:chExt cx=\"0\" cy=\"0\"/></a:xfrm></p:grpSpPr>");
     // Title placeholder
     out.push_str("<p:sp><p:nvSpPr><p:cNvPr id=\"2\" name=\"Title Placeholder 1\"/><p:cNvSpPr><a:spLocks noGrp=\"1\"/></p:cNvSpPr><p:nvPr><p:ph type=\"title\"/></p:nvPr></p:nvSpPr>");
@@ -1561,17 +1471,21 @@ fn serialize_slide_master() -> String {
     out.push_str("</p:spTree>");
     out.push_str("</p:cSld>");
     out.push_str("<p:clrMap bg1=\"lt1\" tx1=\"dk1\" bg2=\"lt2\" tx2=\"dk2\" accent1=\"accent1\" accent2=\"accent2\" accent3=\"accent3\" accent4=\"accent4\" accent5=\"accent5\" accent6=\"accent6\" hlink=\"hlink\" folHlink=\"folHlink\"/>");
-    out.push_str("<p:sldLayoutIdLst><p:sldLayoutId id=\"2147483649\" r:id=\"rId1\"/></p:sldLayoutIdLst>");
+    out.push_str(
+        "<p:sldLayoutIdLst><p:sldLayoutId id=\"2147483649\" r:id=\"rId1\"/></p:sldLayoutIdLst>",
+    );
     out.push_str("<p:txStyles>");
     out.push_str("<p:titleStyle><a:lvl1pPr><a:defRPr sz=\"4400\" b=\"1\"><a:solidFill><a:schemeClr val=\"tx1\"/></a:solidFill><a:latin typeface=\"+mj-lt\"/><a:ea typeface=\"+mj-ea\"/><a:cs typeface=\"+mj-cs\"/></a:defRPr></a:lvl1pPr></p:titleStyle>");
     out.push_str("<p:bodyStyle><a:lvl1pPr><a:defRPr sz=\"3200\"><a:solidFill><a:schemeClr val=\"tx1\"/></a:solidFill><a:latin typeface=\"+mn-lt\"/><a:ea typeface=\"+mn-ea\"/><a:cs typeface=\"+mn-cs\"/></a:defRPr></a:lvl1pPr><a:lvl2pPr><a:defRPr sz=\"2800\"><a:solidFill><a:schemeClr val=\"tx1\"/></a:solidFill><a:latin typeface=\"+mn-lt\"/><a:ea typeface=\"+mn-ea\"/><a:cs typeface=\"+mn-cs\"/></a:defRPr></a:lvl2pPr><a:lvl3pPr><a:defRPr sz=\"2400\"><a:solidFill><a:schemeClr val=\"tx1\"/></a:solidFill><a:latin typeface=\"+mn-lt\"/><a:ea typeface=\"+mn-ea\"/><a:cs typeface=\"+mn-cs\"/></a:defRPr></a:lvl3pPr></p:bodyStyle>");
     out.push_str("<p:otherStyle><a:lvl1pPr><a:defRPr sz=\"1800\"><a:solidFill><a:schemeClr val=\"tx1\"/></a:solidFill><a:latin typeface=\"+mn-lt\"/><a:ea typeface=\"+mn-ea\"/><a:cs typeface=\"+mn-cs\"/></a:defRPr></a:lvl1pPr></p:otherStyle>");
     out.push_str("</p:txStyles>");
     out.push_str("</p:sldMaster>");
-    println!("[DEBUG] serialize_slide_master: finished, length: {}", out.len());
+    println!(
+        "[DEBUG] serialize_slide_master: finished, length: {}",
+        out.len()
+    );
     out
 }
-
 /// Serializes slide master relationships.
 fn serialize_slide_master_rels(has_theme: bool) -> String {
     let mut out = String::new();
@@ -1592,7 +1506,6 @@ fn serialize_slide_master_rels(has_theme: bool) -> String {
     out.push_str("</Relationships>");
     out
 }
-
 /// Serializes a minimal slide layout (required by OOXML spec).
 fn serialize_slide_layout() -> String {
     let mut out = String::new();
@@ -1600,7 +1513,9 @@ fn serialize_slide_layout() -> String {
     out.push_str("<p:sldLayout xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\" type=\"blank\" preserve=\"1\">");
     out.push_str("<p:cSld name=\"Blank\">");
     out.push_str("<p:spTree>");
-    out.push_str("<p:nvGrpSpPr><p:cNvPr id=\"1\" name=\"\"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>");
+    out.push_str(
+        "<p:nvGrpSpPr><p:cNvPr id=\"1\" name=\"\"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>",
+    );
     out.push_str("<p:grpSpPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"0\" cy=\"0\"/><a:chOff x=\"0\" y=\"0\"/><a:chExt cx=\"0\" cy=\"0\"/></a:xfrm></p:grpSpPr>");
     out.push_str("</p:spTree>");
     out.push_str("</p:cSld>");
@@ -1608,7 +1523,6 @@ fn serialize_slide_layout() -> String {
     out.push_str("</p:sldLayout>");
     out
 }
-
 /// Serializes slide layout relationships.
 fn serialize_slide_layout_rels() -> String {
     println!("[DEBUG] serialize_slide_layout_rels: starting");
@@ -1622,6 +1536,9 @@ fn serialize_slide_layout_rels() -> String {
         "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster\" Target=\"../slideMasters/slideMaster1.xml\"/>",
     );
     out.push_str("</Relationships>");
-    println!("[DEBUG] serialize_slide_layout_rels: finished, length: {}", out.len());
+    println!(
+        "[DEBUG] serialize_slide_layout_rels: finished, length: {}",
+        out.len()
+    );
     out
 }
